@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ImagePromptBuilder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #09090b;
+    --surface: #131316;
+    --surface2: #1a1a1f;
+    --surface3: #212128;
+    --border: #27272f;
+    --accent: #c8a96e;
+    --accent2: #e8c98e;
+    --accent-dim: rgba(200,169,110,0.1);
+    --red: #b01515;
+    --red2: #d01818;
+    --text: #f0ede8;
+    --muted: #5a5a68;
+    --muted2: #8a8a9a;
+    --success: #4ade80;
+    --info: #60a5fa;
+    --pink: #fb7185;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 52px 20px 100px;
+  }
+
+  .container { max-width: 880px; margin: 0 auto; }
+
+  /* ── HEADER ─────────────────────────────────────────── */
+  header { text-align: center; margin-bottom: 60px; }
+
+  .logo-row {
+    display: inline-flex; align-items: center; gap: 12px; margin-bottom: 18px;
+  }
+  .logo-icon {
+    width: 44px; height: 44px; border-radius: 11px;
+    background: linear-gradient(135deg, #c8a96e 0%, #8B1A1A 100%);
+    display: flex; align-items: center; justify-content: center; font-size: 22px;
+  }
+  .logo-text { font-family: 'DM Serif Display', serif; font-size: 1.3rem; color: var(--accent2); }
+
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.4rem, 5.5vw, 3.4rem);
+    color: var(--accent2); letter-spacing: -0.02em; line-height: 1.05; margin-bottom: 14px;
+  }
+  header p { color: var(--muted2); font-size: 0.93rem; font-weight: 300; max-width: 500px; margin: 0 auto; line-height: 1.6; }
+  .header-line {
+    width: 100px; height: 2px; margin: 20px auto 0;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  /* ── PRONOUN SELECTOR ───────────────────────────────── */
+  .pronoun-row {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    margin-bottom: 36px;
+  }
+  .pronoun-label { font-size: 0.7rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .pronoun-btns { display: flex; gap: 6px; }
+  .pronoun-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 5px 14px;
+    font-size: 0.8rem; color: var(--muted2); cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: all .16s;
+  }
+  .pronoun-btn:hover { border-color: var(--accent); color: var(--text); }
+  .pronoun-btn.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+
+  /* ── IDENTITY LOCK ──────────────────────────────────── */
+  .identity-block {
+    background: linear-gradient(135deg, rgba(200,169,110,.07), rgba(200,169,110,.02));
+    border: 1px solid rgba(200,169,110,.25);
+    border-left: 4px solid var(--accent);
+    border-radius: var(--radius); padding: 24px; margin-bottom: 36px;
+  }
+  .identity-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--accent); color: #000;
+    font-size: 0.63rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    padding: 4px 12px; border-radius: 999px; margin-bottom: 14px;
+  }
+  .locked-prefix {
+    font-size: 0.82rem; color: #998877; line-height: 1.65; font-style: italic;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 14px;
+    user-select: none;
+  }
+  .identity-edit-label {
+    display: block; font-size: 0.67rem; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
+  }
+  .identity-help {
+    font-size: 0.74rem; color: var(--muted); margin-top: 8px; line-height: 1.55;
+  }
+
+  /* ── TOOL TIPS PANEL ────────────────────────────────── */
+  .tool-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 36px; overflow: hidden;
+  }
+  .tool-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 15px 20px; cursor: pointer; user-select: none; transition: background .16s;
+  }
+  .tool-toggle:hover { background: var(--surface2); }
+  .tool-toggle-title {
+    font-size: 0.7rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--info);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tool-arrow { color: var(--muted); transition: transform .2s; }
+  .tool-panel.open .tool-arrow { transform: rotate(180deg); }
+  .tool-body { display: none; padding: 0 20px 20px; border-top: 1px solid var(--border); }
+  .tool-panel.open .tool-body { display: block; }
+  .tool-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px; padding-top: 16px;
+  }
+  .tool-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px;
+  }
+  .tool-card h4 { font-size: 0.82rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .tool-card p { font-size: 0.73rem; color: var(--muted2); line-height: 1.5; }
+  .tool-card code {
+    display: inline-block; margin-top: 8px;
+    background: var(--surface3); color: var(--accent);
+    font-size: 0.7rem; padding: 3px 8px; border-radius: 4px; font-family: monospace;
+  }
+
+  /* ── SECTIONS ───────────────────────────────────────── */
+  .section { margin-bottom: 32px; }
+  .section-label {
+    font-size: 0.69rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .section-label.gold { color: var(--accent); }
+  .section-label.blue { color: var(--info); }
+  .section-label.pink { color: var(--pink); }
+
+  /* ── CHIPS ──────────────────────────────────────────── */
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 8px; }
+
+  .chip {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 7px 15px;
+    font-size: 0.79rem; color: var(--muted2); cursor: pointer;
+    transition: all .15s; user-select: none; white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--text); }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+
+  /* Camera/technical chips */
+  .chip.b { border-color: #152030; color: #5080a0; }
+  .chip.b:hover { border-color: var(--info); color: #93c5fd; }
+  .chip.b.active { background: #1a3050; border-color: var(--info); color: #93c5fd; font-weight: 600; }
+
+  /* Negative chips — multi-select */
+  .chip.neg { border-color: #3a1020; color: #905060; }
+  .chip.neg:hover { border-color: var(--pink); color: #fda4af; }
+  .chip.neg.active { background: #3a1525; border-color: var(--pink); color: #fda4af; font-weight: 600; }
+
+  /* Sub-group label within chips */
+  .chip-group {
+    width: 100%; font-size: 0.63rem; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin: 8px 0 2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .chip-group::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .chip-group.gold { color: var(--accent); }
+  .chip-group.gold::after { background: rgba(200,169,110,.2); }
+
+  /* ── CAMERA TOOLTIP ────────────────────────────────── */
+  .has-tip { position: relative; }
+  .has-tip::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%; transform: translateX(-50%);
+    background: var(--surface3); border: 1px solid var(--border);
+    color: var(--muted2); font-size: 0.71rem;
+    padding: 9px 13px; border-radius: 8px;
+    white-space: normal; width: 240px; line-height: 1.55;
+    opacity: 0; pointer-events: none;
+    transition: opacity .18s; z-index: 200;
+    text-align: left; font-weight: 400; font-style: normal;
+  }
+  .has-tip::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%; transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--border);
+    opacity: 0; pointer-events: none;
+    transition: opacity .18s; z-index: 200;
+  }
+  .has-tip:hover::after, .has-tip:hover::before { opacity: 1; }
+
+  /* ── TEXTAREA ───────────────────────────────────────── */
+  textarea, input[type="text"] {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 0.87rem;
+    padding: 11px 15px; resize: vertical; transition: border-color .18s; outline: none;
+  }
+  textarea:focus, input[type="text"]:focus { border-color: var(--accent); }
+  textarea { min-height: 76px; line-height: 1.6; }
+  textarea.neg-ta { border-color: rgba(251,113,133,.25); }
+  textarea.neg-ta:focus { border-color: var(--pink); }
+
+  /* ── OUTPUT ─────────────────────────────────────────── */
+  .output-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; margin-top: 44px;
+  }
+  .output-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface2);
+  }
+  .output-header span {
+    font-size: 0.69rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  }
+  .btn-row { display: flex; gap: 8px; }
+
+  .copy-btn {
+    background: var(--accent); color: #000; border: none; border-radius: 6px;
+    padding: 7px 20px; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; letter-spacing: .04em; transition: all .16s;
+  }
+  .copy-btn:hover { background: var(--accent2); }
+  .copy-btn:active { transform: scale(.97); }
+  .copy-btn.ok { background: var(--success); color: #000; }
+
+  .reset-btn, .random-btn {
+    border-radius: 6px; padding: 7px 16px; font-size: 0.8rem; font-weight: 600;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .16s;
+  }
+  .reset-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .reset-btn:hover { border-color: var(--pink); color: var(--pink); }
+  .random-btn { background: #1a2a1a; border: 1px solid #2a4a2a; color: #86efac; }
+  .random-btn:hover { border-color: var(--success); background: #223022; }
+
+  .output-text {
+    padding: 22px; font-size: 0.87rem; line-height: 1.85;
+    color: #bbb; white-space: pre-wrap; word-break: break-word; min-height: 130px;
+  }
+  .char-count { font-size: 0.72rem; color: var(--muted); text-align: right; margin-top: 4px; }
+
+  /* Segment colours */
+  .s-style    { color: #f0ede8; }
+  .s-identity { color: #e8c98e; }
+  .s-scene    { color: #93c5fd; }
+  .s-lighting { color: #fca5a5; }
+  .s-mood     { color: #86efac; }
+  .s-outfit   { color: #d8b4fe; }
+  .s-camera   { color: #67e8f9; }
+  .s-color    { color: #fdba74; }
+  .s-negative { color: #fb7185; }
+  .s-extra    { color: #a3e635; }
+
+  /* ── LEGEND ─────────────────────────────────────────── */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px;
+    padding: 14px 18px; background: var(--surface);
+    border-radius: var(--radius); border: 1px solid var(--border);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--muted2); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── ACTIONS ────────────────────────────────────────── */
+  .actions-row { display: flex; gap: 10px; margin-top: 22px; justify-content: flex-end; }
+
+  /* ── NEGATIVE LABEL ─────────────────────────────────── */
+  .neg-sub-label {
+    display: block; font-size: 0.66rem; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--pink); margin-top: 12px; margin-bottom: 7px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-row">
+      <div class="logo-icon">🎯</div>
+      <div class="logo-text">ImagePromptBuilder</div>
+    </div>
+    <h1>Skapa AI-bildprompts</h1>
+    <p>Bygg professionella prompts med ansiktsidentitet låst. Aldrig förändrad — oavsett scen, stil eller miljö.</p>
+    <div class="header-line"></div>
+  </header>
+
+  <!-- PRONOUN SELECTOR -->
+  <div class="pronoun-row">
+    <span class="pronoun-label">Pronomen i prompten</span>
+    <div class="pronoun-btns">
+      <button class="pronoun-btn active" data-subject="He" data-poss="His" data-obj="him" onclick="setPronoun(this)">Han (He)</button>
+      <button class="pronoun-btn" data-subject="She" data-poss="Her" data-obj="her" onclick="setPronoun(this)">Hon (She)</button>
+      <button class="pronoun-btn" data-subject="They" data-poss="Their" data-obj="them" onclick="setPronoun(this)">Hen (They)</button>
+    </div>
+  </div>
+
+  <!-- IDENTITY LOCK -->
+  <div class="identity-block">
+    <div class="identity-badge">🔒 Identitetslås — förändras aldrig</div>
+    <div class="locked-prefix" id="locked-prefix">
+      Using the uploaded reference image: Preserve this person's EXACT facial identity with complete fidelity — identical face shape, bone structure, skin tone, eye color and shape, nose, lips, and every defining facial feature. The generated image must show 100% the same person as in the reference photo. DO NOT alter, idealize, soften, or modify ANY facial characteristics whatsoever. Identity preservation is the highest priority.
+    </div>
+    <label class="identity-edit-label">✏️ Beskriv personens unika drag (läggs till låset)</label>
+    <textarea id="identity-desc" rows="3" placeholder="Beskriv unika ansiktsdrag, hudton, ögonfärg, hår, ålder...">He has a radiant, glowing skin tone with subtle highlights on cheekbones, bright sharp eyes, strong jawline, and short dark hair. Distinguished and confident appearance, mid-40s.</textarea>
+    <p class="identity-help">💡 Ju mer specifikt du beskriver ögonfärg, hudton, hårfärg och ansiktsdrag — desto bättre ansiktsbevarelse i AI-verktyget.</p>
+  </div>
+
+  <!-- AI TOOL TIPS -->
+  <div class="tool-panel" id="tool-panel">
+    <div class="tool-toggle" onclick="toggleTools()">
+      <span class="tool-toggle-title">💡 AI-verktygs tips — Midjourney, DALL·E 3, Stable Diffusion &amp; Firefly</span>
+      <span class="tool-arrow" id="tool-arrow">▼</span>
+    </div>
+    <div class="tool-body" id="tool-body">
+      <div class="tool-grid">
+        <div class="tool-card">
+          <h4>Midjourney</h4>
+          <p>Ladda upp referensbild och lägg till i slutet av prompten. --cw 100 = maximalt ansiktsfokus.</p>
+          <code>--cref [bild-URL] --cw 100</code>
+        </div>
+        <div class="tool-card">
+          <h4>DALL·E 3 (ChatGPT)</h4>
+          <p>Ladda upp referensbild direkt i chatten. Skriv prompten som meningar (ej tagg-listor). Identitetsbeskrivningen är extra viktig här.</p>
+        </div>
+        <div class="tool-card">
+          <h4>Stable Diffusion</h4>
+          <p>Använd <strong>IP-Adapter FaceID Plus</strong> med referensbilden. Sätt scale till 0.6–1.0 för stark ansiktsbevarelse.</p>
+        </div>
+        <div class="tool-card">
+          <h4>Adobe Firefly / Ideogram</h4>
+          <p>Ladda upp referensfoto i "Reference Image"-funktionen. Prompten från detta verktyg fungerar perfekt som komplement.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE / SETTING -->
+  <div class="section">
+    <div class="section-label">🌍 Scen &amp; Miljö</div>
+    <div class="chips" id="chips-scene">
+      <div class="chip-group">Allmänna miljöer</div>
+      <div class="chip active" data-val="sitting confidently on a modern luxury sofa in a high-end penthouse office, floor-to-ceiling windows, city view">Lyxigt kontor</div>
+      <div class="chip" data-val="standing in front of massive floor-to-ceiling windows overlooking a futuristic city skyline at dusk, dramatic glass architecture">Skyskrapa / stad</div>
+      <div class="chip" data-val="seated at a sleek minimalist desk with a MacBook and a single espresso in a clean Scandinavian-style workspace, warm wood and white tones">Skandinavisk arbetsplats</div>
+      <div class="chip" data-val="outdoors on a rooftop terrace at golden hour, city skyline stretched behind, relaxed yet powerful posture, warm amber light">Rooftop golden hour</div>
+      <div class="chip" data-val="in a private jet interior, cream leather seating, oval window light, subtle luxury details, clouds visible below, champagne on the armrest">Privatjet</div>
+      <div class="chip" data-val="in a moody cinematic studio, dramatic shadows, single spotlight from directly above, dark grey seamless backdrop">Cinematic studio</div>
+      <div class="chip" data-val="on the sun-drenched deck of a luxury superyacht anchored in a turquoise Mediterranean bay, white deck and blue ocean">Lyxjakt i Medelhavet</div>
+      <div class="chip" data-val="in a contemporary art gallery surrounded by large-format modern artworks, polished concrete floor, white walls, museum spotlights">Konstgalleri</div>
+      <div class="chip" data-val="at a Michelin-starred restaurant table, candlelight, crisp white tablecloth, fine crystal stemware, intimate and sophisticated atmosphere">Michelin-restaurang</div>
+      <div class="chip" data-val="at a luxury ski resort chalet in the Swiss Alps, snow-capped mountains visible through panoramic windows, warm fireplace glow, alpine elegance">Alpint chalet</div>
+      <div class="chip" data-val="on a stunning rooftop terrace in Monaco, the Formula 1 street circuit and harbour visible in the background, Mediterranean lifestyle">Monaco harbor</div>
+      <div class="chip" data-val="at a live technology keynote stage, massive LED screen behind, dramatic professional stage lighting, thousands of seats">Keynote-scen</div>
+      <div class="chip" data-val="custom">✏️ Skriv egen...</div>
+    </div>
+    <textarea id="custom-scene" style="display:none;margin-top:6px;" placeholder="Beskriv miljön i detalj..."></textarea>
+  </div>
+
+  <!-- LIGHTING -->
+  <div class="section">
+    <div class="section-label">💡 Ljussättning</div>
+    <div class="chips" id="chips-lighting">
+      <div class="chip-group">Studio &amp; kontrollerat</div>
+      <div class="chip active" data-val="soft studio lighting with warm golden accents, subtle fill light eliminating harsh shadows, professional and flattering">Varmt studio</div>
+      <div class="chip" data-val="butterfly lighting — main light directly above and in front, creating a delicate butterfly-shaped shadow under the nose, classic beauty and high-fashion lighting">Butterfly (skönhet)</div>
+      <div class="chip" data-val="Rembrandt lighting — main light at 45 degrees to the side, creating a small triangle of light on the shadowed cheek, dramatic and painterly portrait lighting">Rembrandt (dramatisk)</div>
+      <div class="chip" data-val="loop lighting — main light slightly to the side, small loop shadow from the nose falling gently on the cheek, flattering and versatile for all face shapes">Loop (skonsam porträtt)</div>
+      <div class="chip" data-val="sharp editorial hard light, single source at 90 degrees, bold fashion magazine shadows, high contrast and decisive">Editorial / hård</div>
+      <div class="chip" data-val="dramatic cinematic window light, single large soft-box at the side, deep gradient shadows, film-quality atmosphere">Cinematic fönsterljus</div>
+      <div class="chip-group">Naturligt ljus</div>
+      <div class="chip" data-val="golden hour sunlight, warm amber and honey tones, long soft directional shadows, magical and aspirational atmosphere">Golden Hour</div>
+      <div class="chip" data-val="blue hour ambient light just after sunset, cool indigo tones, city lights beginning to glow, modern and sophisticated">Blue Hour</div>
+      <div class="chip" data-val="overcast natural light, perfectly soft and diffused, no harsh shadows, even and fresh, great for clean editorial portraits">Mjukt molnigt</div>
+      <div class="chip" data-val="sharp morning light, crisp shadows, energetic and clean, the feeling of a fresh productive day">Skarp morgonljus</div>
+      <div class="chip-group">Kreativt &amp; atmosfäriskt</div>
+      <div class="chip" data-val="neon ambient light, cool urban night glow, complementary colour contrast between warm and cool, modern city night atmosphere">Neon Ambient</div>
+      <div class="chip" data-val="warm candlelight and soft practical interior lights, intimate luxury evening atmosphere, rich amber and shadow">Stearinljus / interiör</div>
+      <div class="chip" data-val="single dramatic spotlight from directly above, subject bathed in pure white light, rest in deep theatrical shadow, powerful and cinematic">Spotlight uppifrån</div>
+      <div class="chip" data-val="soft foggy morning light filtering through mist, ethereal and atmospheric, cool desaturated tones with warm glow at the horizon">Dimma / morgondis</div>
+      <div class="chip" data-val="warm fireplace glow, orange and red practical fire light on face, deep dramatic shadows, intimate and primal atmosphere">Eldskens-ljus</div>
+      <div class="chip" data-val="rain-streaked window light, cool grey natural light diffused through raindrops, moody and contemplative, urban melancholy">Regnfönster</div>
+      <div class="chip" data-val="cool blue moonlight, silver and navy tones, mysterious and cinematic, late-night stillness and quiet drama">Månljus / natt</div>
+      <div class="chip" data-val="coloured gel lighting, bold single-colour wash — deep magenta, electric blue, or vivid green — high-fashion editorial energy">Coloured gel / fashion</div>
+      <div class="chip" data-val="industrial warehouse light, bare bulbs and fluorescent tubes mixed, raw authentic atmosphere, gritty and real">Industriell / rå</div>
+      <div class="chip" data-val="sun flare through trees or venetian blinds, striped patterns of light and shadow across the subject, cinematic and dynamic">Solstrimmer / venetianskt</div>
+      <div class="chip" data-val="custom">✏️ Skriv egen...</div>
+    </div>
+    <textarea id="custom-lighting" style="display:none;margin-top:6px;" placeholder="Beskriv ljussättningen i detalj..."></textarea>
+  </div>
+
+  <!-- MOOD -->
+  <div class="section">
+    <div class="section-label">😌 Känsla &amp; uttryck</div>
+    <div class="chips" id="chips-mood">
+      <div class="chip active" data-val="calm, confident, and quietly successful — the composed expression of someone who has already achieved their vision">Lugn &amp; framgångsrik</div>
+      <div class="chip" data-val="visionary and deeply thoughtful, gaze directed slightly past the camera as if seeing a future others cannot yet imagine">Visionär</div>
+      <div class="chip" data-val="powerful and authoritative, direct unwavering gaze straight into the lens, commanding respect and presence">Auktoritär &amp; dominant</div>
+      <div class="chip" data-val="warm and genuinely approachable, a natural subtle smile, the energy of someone instantly trustworthy">Varm &amp; tillgänglig</div>
+      <div class="chip" data-val="intensely focused and driven, sharp determined gaze, the concentrated energy of someone fully in their element">Intensiv &amp; fokuserad</div>
+      <div class="chip" data-val="relaxed and naturally charismatic, effortless confidence and charm, completely comfortable in his own skin">Avslappnad &amp; karismatisk</div>
+      <div class="chip" data-val="proud and purposeful, a sense of quiet achievement and clear direction, grounded strength visible in posture">Stolt &amp; målmedveten</div>
+      <div class="chip" data-val="a moment of genuine celebration and triumph, authentic joy, the earned reward of sustained effort">Triumferande</div>
+      <div class="chip" data-val="cool and slightly enigmatic, a knowing half-smile suggesting depth, sophistication and a private world of thoughts">Mystisk &amp; cool</div>
+      <div class="chip" data-val="reflective and contemplative, a quiet introspective moment, wisdom visible in the eyes">Eftertänksam</div>
+      <div class="chip" data-val="custom">✏️ Skriv egen...</div>
+    </div>
+    <textarea id="custom-mood" style="display:none;margin-top:6px;" placeholder="Beskriv känsla och uttryck i detalj..."></textarea>
+  </div>
+
+  <!-- OUTFIT -->
+  <div class="section">
+    <div class="section-label">👔 Outfit</div>
+    <div class="chips" id="chips-outfit">
+      <div class="chip-group">Business &amp; formellt</div>
+      <div class="chip active" data-val="smart professional attire in minimalist black or deep neutral tones, clean and modern — effortless sophisticated authority">Smart casual / svart</div>
+      <div class="chip" data-val="tailored dark navy suit, no tie, crisp white shirt, a luxury mechanical watch glimpsed at the cuff, understated power">Navy kostym</div>
+      <div class="chip" data-val="bespoke charcoal grey suit, slim modern fit, white linen pocket square, impeccably polished and confident">Charcoal grey kostym</div>
+      <div class="chip" data-val="all-black look, premium ribbed turtleneck and tailored slim trousers, Steve Jobs meets Jony Ive — intellectual minimalism">All-black turtleneck</div>
+      <div class="chip" data-val="business casual perfection — well-fitted premium chinos, refined open-collar shirt in pale tone, luxury without effort">Business casual</div>
+      <div class="chip" data-val="smart Scandinavian street style, architectural clean lines, earth tones and warm greys, understated premium brands">Skandinavisk street</div>
+      <div class="chip" data-val="crisp white open-collar dress shirt, relaxed confident fit, luxury watch visible, Mediterranean elegance">Vit skjorta öppen krage</div>
+      <div class="chip" data-val="classic black tuxedo, satin lapels, crisp white dress shirt, black bow tie, polished shoes — black tie elegance">Smoking / tuxedo</div>
+      <div class="chip" data-val="impeccably fitted double-breasted suit in camel or tan, modern cut, no tie, luxury Italian fabric — fashion-forward elegance">Double-breasted beige</div>
+      <div class="chip" data-val="relaxed cream or ivory linen suit, slightly unstructured, worn in warm weather setting, effortless Mediterranean style">Linen kostym / cream</div>
+      <div class="chip" data-val="slim-fit dark green or forest suit, unexpected colour confidence, modern personality and individual style">Mörkgrön kostym</div>
+      <div class="chip" data-val="tailored blazer over a plain crew-neck premium t-shirt, no shirt, modern smart casual, the uniform of a creative director">Blazer over T-shirt</div>
+      <div class="chip-group">Casual &amp; street luxury</div>
+      <div class="chip" data-val="premium athleisure — technical performance joggers, luxury brand fitted zip-up, athletic energy with refined luxury">Luxury athleisure</div>
+      <div class="chip" data-val="relaxed weekend luxury — dark indigo selvedge jeans, premium white shirt, unstructured linen blazer, effortless confidence">Casual luxury weekend</div>
+      <div class="chip" data-val="premium slim dark jeans, a fitted plain white t-shirt, and a tailored leather jacket, understated rock elegance">Läderjakka / dark jeans</div>
+      <div class="chip" data-val="luxury bomber jacket in satin or nylon, clean minimal design, worn over a crisp shirt, modern street prestige">Bomber jacket</div>
+      <div class="chip" data-val="oversized premium hoodie in dark grey or black, high-end streetwear, relaxed and effortlessly confident">Premium hoodie</div>
+      <div class="chip" data-val="classic polo shirt in navy or dark green, well-fitted, quiet luxury — the confident off-duty look of someone who doesn't need to try">Polo shirt — quiet luxury</div>
+      <div class="chip" data-val="custom">✏️ Skriv egen...</div>
+    </div>
+    <textarea id="custom-outfit" style="display:none;margin-top:6px;" placeholder="Beskriv outfiten i detalj..."></textarea>
+  </div>
+
+  <!-- GLASSES -->
+  <div class="section">
+    <div class="section-label">👓 Glasögon &amp; solglasögon</div>
+    <div class="chips" id="chips-glasses">
+      <div class="chip active" data-val="">Inga glasögon</div>
+      <div class="chip" data-val="wearing elegant thin-frame prescription glasses, sophisticated and quietly intellectual">Tunna eleganta bågar</div>
+      <div class="chip" data-val="wearing classic bold black-frame glasses, confident, distinctive and modern">Klassiska svarta bågar</div>
+      <div class="chip" data-val="wearing minimalist rimless glasses, clean and modern, almost invisible">Rimless / utan båge</div>
+      <div class="chip" data-val="wearing stylish gold-frame prescription glasses, luxury and refined with warm metallic accents">Guldbågade glasögon</div>
+      <div class="chip" data-val="wearing classic Ray-Ban Wayfarer sunglasses in matte black, effortlessly cool">Solglasögon — Wayfarer</div>
+      <div class="chip" data-val="wearing timeless gold aviator sunglasses, masculine and iconic">Solglasögon — Aviator</div>
+      <div class="chip" data-val="wearing luxury large square acetate sunglasses, fashion-forward and bold">Solglasögon — Oversize</div>
+      <div class="chip" data-val="wearing sporty wraparound performance sunglasses, dynamic energy">Solglasögon — Sport</div>
+      <div class="chip" data-val="custom">✏️ Skriv egen...</div>
+    </div>
+    <textarea id="custom-glasses" style="display:none;margin-top:6px;" placeholder="Beskriv glasögonen i detalj..."></textarea>
+  </div>
+
+  <!-- CAMERA & TECHNICAL -->
+  <div class="section">
+    <div class="section-label blue">📷 Kamera &amp; teknisk</div>
+    <div class="chips" id="chips-camera">
+      <div class="chip b has-tip active"
+           data-val="shot on a Hasselblad X2D 100C medium format camera, 80mm f/2.8 lens, extraordinary tonal depth and micro-detail, medium format rendering quality"
+           data-tip="Världens finaste bildkvalitet. Ger otrolig djup i hudtoner och mikrodetaljer. Typiskt för high-end modefotografering.">Hasselblad medium format</div>
+      <div class="chip b has-tip"
+           data-val="captured with a Canon EOS R5, 85mm f/1.2L prime, stunning background separation, cinematic subject isolation, creamy bokeh"
+           data-tip="85mm f/1.2 är det klassiska porträttobjektivet. Skapar silkeslen bokeh och isolerar ansiktet mot en mjuk, drömlik bakgrund.">Canon R5 — 85mm f/1.2</div>
+      <div class="chip b has-tip"
+           data-val="shot on Sony A7R V, 135mm f/1.8 GM lens, telephoto portrait compression, razor-sharp subject with dreamy compressed background"
+           data-tip="Lång brännvidd = komprimerad bakgrund. Bakgrunden pressas ihop och ser mer dramatisk ut. Ansiktet är knivskarp.">Sony A7R V — 135mm</div>
+      <div class="chip b has-tip"
+           data-val="Nikon Z9, 70-200mm f/2.8 S telephoto zoom, professional editorial portrait compression, dynamic and impactful"
+           data-tip="Zoom-objektiv ger flexibilitet. 70-200mm ger editorial-känsla med stark kompression — bra för dynamiska porträtt i miljö.">Nikon Z9 — 70-200mm</div>
+      <div class="chip b has-tip"
+           data-val="shot on a Leica M11, 50mm Summilux f/1.4, classic rangefinder rendering, organic micro-contrast, analogue soul meeting digital resolution"
+           data-tip="Leica ger en unik organisk karaktär — inte perfekt som ett studio-objektiv, utan med en levande, konstnärlig kvalitet. 50mm = naturligt synfält.">Leica M11 — 50mm Summilux</div>
+      <div class="chip b has-tip"
+           data-val="Phase One IQ4 150MP, 80mm f/2.8 Blue Ring, absolute maximum resolution and tonal range, advertising and editorial prestige quality"
+           data-tip="150 megapixel — det absoluta maximumet. Används av de bästa reklamfotograferna. Ger en tyngd och perfektion i bilden som inget annat matchar.">Phase One 150MP</div>
+      <div class="chip b has-tip"
+           data-val="professional DSLR portrait, 85mm f/1.8, clean sharp photorealistic rendering, professional standard"
+           data-tip="Den klassiska proffsstandarden — skarp, ren och trovärdig. Bra när du vill ha realistisk fotokänsla utan att det ser för 'konstigt' ut.">Standard 85mm portrait</div>
+      <div class="chip b has-tip"
+           data-val="wide environmental portrait, 35mm f/2.0, more context and scene visible, photojournalism aesthetic"
+           data-tip="35mm vidvinkel visar mer av miljön runt personen. Ger en journalistisk, dokumentär känsla — bra när platsen är lika viktig som personen.">Miljöporträtt 35mm</div>
+      <div class="chip b has-tip"
+           data-val="extreme close-up portrait, 100mm macro, every skin pore and texture visible, ultra-intimate and revealing, editorial beauty photography"
+           data-tip="Extrem närbild som visar ansiktets textur i absolut detalj. Används i skönhetsreklam och mode. Kräver perfekt hud men ger fantastisk närvaro.">Macro närbild — 100mm</div>
+      <div class="chip" data-val="custom">✏️ Skriv egen...</div>
+    </div>
+    <textarea id="custom-camera" style="display:none;margin-top:6px;" placeholder="Beskriv kamerainställningar och tekniska detaljer..."></textarea>
+  </div>
+
+  <!-- COLOR GRADE -->
+  <div class="section">
+    <div class="section-label blue">🎨 Färgstämning &amp; grading</div>
+    <div class="chips" id="chips-color">
+      <div class="chip b active" data-val="">Ingen specifik grading</div>
+      <div class="chip b" data-val="warm cinematic orange-teal colour grade, Hollywood blockbuster aesthetic, rich deep shadows, glowing warm highlights">Cinematic orange-teal</div>
+      <div class="chip b" data-val="Kodak Portra 400 film emulation — warm organic skin tones, subtle authentic grain, analogue richness, timeless film photography">Kodak Portra 400</div>
+      <div class="chip b" data-val="cool Scandinavian minimal colour grade — elegantly desaturated, clean pure whites, muted refined tones, sophisticated restraint">Skandinavisk cool</div>
+      <div class="chip b" data-val="high contrast black and white — timeless editorial monochrome, rich deep blacks, luminous whites, decisive classic portrait photography">Svartvit editorial</div>
+      <div class="chip b" data-val="moody desaturated colour grade — shadows gently lifted, highlights rolled off smoothly, contemplative and cinematic">Moody desaturated</div>
+      <div class="chip b" data-val="Fuji Velvia-inspired colour — vivid saturated natural tones, almost hyperreal colour richness, perfect for outdoor and automotive contexts">Fuji Velvia vivid</div>
+      <div class="chip b" data-val="vintage analogue warmth — slightly faded mid-tones, yellowed warm highlights, nostalgic 1970s film aesthetic">Vintage 70s analog</div>
+      <div class="chip" data-val="custom">✏️ Skriv egen...</div>
+    </div>
+    <textarea id="custom-color" style="display:none;margin-top:6px;" placeholder="Beskriv färgstämning och grading i detalj..."></textarea>
+  </div>
+
+  <!-- ASPECT RATIO -->
+  <div class="section">
+    <div class="section-label">📐 Bildformat &amp; ratio</div>
+    <div class="chips" id="chips-ratio">
+      <div class="chip active" data-val="portrait orientation 4:5 ratio, optimised for Instagram and social media">Portrait 4:5 (Instagram)</div>
+      <div class="chip" data-val="square format 1:1, balanced and impactful composition">Kvadrat 1:1</div>
+      <div class="chip" data-val="widescreen 16:9 cinematic format, landscape orientation, epic scale and grandeur">Widescreen 16:9</div>
+      <div class="chip" data-val="ultra-wide cinematic 2.39:1 anamorphic format, movie-screen proportions, epic atmosphere">Anamorphic 2.39:1</div>
+      <div class="chip" data-val="classic portrait 2:3 magazine cover ratio, editorial and timeless proportions">Magasin 2:3</div>
+      <div class="chip" data-val="tall 9:16 portrait for Stories and Reels, vertical full-screen mobile format, social-first composition">Stories 9:16</div>
+    </div>
+  </div>
+
+  <!-- IMAGE STYLE -->
+  <div class="section">
+    <div class="section-label">✨ Bildstil</div>
+    <div class="chips" id="chips-style">
+      <div class="chip active" data-val='Forbes magazine "100 Most Powerful" cover portrait, hyper-realistic, editorial prestige, authoritative and aspirational'>Forbes magazine</div>
+      <div class="chip" data-val="cinematic Hollywood movie poster portrait, dramatic composition, A-list energy, world-class production quality, hyper-realistic">Movie poster</div>
+      <div class="chip" data-val="high-end editorial fashion photograph, luxury double-page magazine spread quality, razor-sharp and impeccably crafted">Editorial mode</div>
+      <div class="chip" data-val="LinkedIn executive premium profile photo, authoritative, polished, clean professional background, instant trust and credibility">LinkedIn Executive</div>
+      <div class="chip" data-val="TIME magazine cover portrait, iconic and historically significant, slightly dramatic, subtle desaturation, timeless gravitas">TIME magazine cover</div>
+      <div class="chip" data-val="Vanity Fair celebrity editorial portrait, glamorous and sophisticated, world-class photographer aesthetic, personal and revealing">Vanity Fair editorial</div>
+      <div class="chip" data-val="premium brand campaign portrait, advertising quality, aspirational lifestyle, precision lighting, polished and globally appealing">Brand campaign</div>
+      <div class="chip" data-val="National Geographic-style portrait, naturalistic and authentic, emotionally resonant, world-class photojournalism quality">National Geographic</div>
+      <div class="chip" data-val="GQ or Esquire men's magazine portrait — style-conscious, groomed confidence, effortlessly masculine and modern">GQ / Esquire</div>
+      <div class="chip" data-val="Wired or Fast Company technology magazine portrait — intellectual, innovative, clean design-forward aesthetic">Wired / Fast Company</div>
+      <div class="chip" data-val="Monocle magazine portrait — understated, cultured, quietly confident, European sensibility, refined without showing off">Monocle magazine</div>
+      <div class="chip" data-val="Wall Street Journal Magazine portrait — ambitious, global, financially powerful, serious prestige">WSJ Magazine</div>
+      <div class="chip" data-val="Apple-style product campaign aesthetic — clean white or black background, precision lighting, aspirational minimalism, human meets technology">Apple campaign</div>
+      <div class="chip" data-val="Architectural Digest lifestyle portrait — surrounded by beautiful design, luxury home or hotel interior, taste and refinement">Architectural Digest</div>
+      <div class="chip" data-val="classic Renaissance oil painting style portrait, realistic lighting inspired by Vermeer or Rembrandt, timeless beauty and gravitas">Renässansmålning / Old Masters</div>
+      <div class="chip" data-val="hyperrealistic 3D CGI render, photorealistic but with subtle uncanny perfection, next-generation digital human quality">3D CGI / Digital human</div>
+      <div class="chip" data-val="dark moody cinematic still, as if a frame taken directly from a prestige Netflix or HBO drama, film grain, anamorphic lens characteristics">Prestige TV / film still</div>
+      <div class="chip" data-val="luxury watch or fragrance print advertisement, extreme close detail, perfect skin texture, warm studio light, aspirational product campaign quality">Lyxreklam / parfymkampanj</div>
+      <div class="chip" data-val="custom">✏️ Skriv egen...</div>
+    </div>
+    <textarea id="custom-style" style="display:none;margin-top:6px;" placeholder="Beskriv bildstilen i detalj..."></textarea>
+  </div>
+
+  <!-- NEGATIVE PROMPTS -->
+  <div class="section">
+    <div class="section-label pink">🚫 Negativa prompts — undvik (välj flera)</div>
+    <div class="chips" id="chips-negative">
+      <div class="chip neg active" data-val="bad proportions, asymmetric features, broken anatomy, distorted face, altered facial structure, blurry face, bad skin texture, cloned face, cross-eyed, missing features, disfigured, deformed, plastic-looking skin, uncanny valley">🔒 Ansiktsskydd (rekommenderat)</div>
+      <div class="chip neg" data-val="cartoon, anime, illustration, oil painting, sketch, watercolour, artistic interpretation, unrealistic stylisation">Ingen tecknad stil</div>
+      <div class="chip neg" data-val="low quality, pixelated, blurry, artifacts, noise, compression, low resolution, grainy">Ingen låg kvalitet</div>
+      <div class="chip neg" data-val="text, watermark, signature, brand logos on skin, clothing labels, typography">Ingen text/logotyp</div>
+      <div class="chip neg" data-val="overly airbrushed, wax figure, over-retouched, too perfect, plastic surgery appearance, unnatural skin">Inget plastigt/airbrushat</div>
+      <div class="chip neg" data-val="extra fingers, malformed hands, extra limbs, bad hands, missing limbs, incorrect anatomy">Inga felaktiga händer</div>
+      <div class="chip neg" data-val="flat lighting, blown-out highlights, underexposed shadows, uneven lighting, harsh flash">Dålig exponering</div>
+    </div>
+    <label class="neg-sub-label">Ytterligare negativa prompts (valfritt)</label>
+    <textarea id="custom-negative" class="neg-ta" placeholder="Lägg till fler saker att undvika..."></textarea>
+  </div>
+
+  <!-- EXTRA DETAILS -->
+  <div class="section">
+    <div class="section-label">✏️ Extra detaljer (valfritt)</div>
+    <textarea id="custom-extra" placeholder="Lägg till specifika detaljer, props, accessoarer, bakgrundselement, färgpaletter, rekvisita, specifika instruktioner..."></textarea>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="actions-row">
+    <button class="reset-btn" onclick="resetAll()">↺ Återställ</button>
+    <button class="random-btn" onclick="randomise()">🎲 Slumpa!</button>
+  </div>
+
+  <!-- OUTPUT -->
+  <div class="output-wrap">
+    <div class="output-header">
+      <span>Genererad prompt</span>
+      <div class="btn-row">
+        <button class="copy-btn" id="copy-btn" onclick="copyPrompt()">Kopiera</button>
+      </div>
+    </div>
+    <div class="output-text" id="output"></div>
+    <div style="padding:0 20px 14px; text-align:right;">
+      <span class="char-count" id="char-count">0 tecken</span>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item"><div class="dot" style="background:#e8c98e"></div>Identitet (låst)</div>
+    <div class="legend-item"><div class="dot" style="background:#93c5fd"></div>Scen</div>
+    <div class="legend-item"><div class="dot" style="background:#fca5a5"></div>Ljus</div>
+    <div class="legend-item"><div class="dot" style="background:#86efac"></div>Känsla</div>
+    <div class="legend-item"><div class="dot" style="background:#d8b4fe"></div>Outfit</div>
+    <div class="legend-item"><div class="dot" style="background:#67e8f9"></div>Kamera</div>
+    <div class="legend-item"><div class="dot" style="background:#fdba74"></div>Färgstämning</div>
+    <div class="legend-item"><div class="dot" style="background:#f0ede8"></div>Bildstil</div>
+    <div class="legend-item"><div class="dot" style="background:#fb7185"></div>Negativt</div>
+    <div class="legend-item"><div class="dot" style="background:#a3e635"></div>Extra</div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+  /* ─── PRONOUN STATE ────────────────────────────────── */
+  let pronoun = { subject: 'He', poss: 'His', obj: 'him' };
+
+  function setPronoun(btn) {
+    document.querySelectorAll('.pronoun-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    pronoun.subject = btn.dataset.subject;
+    pronoun.poss   = btn.dataset.poss;
+    pronoun.obj    = btn.dataset.obj;
+    buildPrompt();
+  }
+
+  /* ─── LOCKED IDENTITY PREFIX ───────────────────────── */
+  const LOCK = `Using the uploaded reference image: Preserve this person's EXACT facial identity with complete fidelity — identical face shape, bone structure, skin tone, eye color and shape, nose, lips, and every defining facial feature. The generated image must show 100% the same person as in the reference photo. DO NOT alter, idealize, soften, or modify ANY facial characteristics whatsoever. Identity preservation is the highest priority.`;
+
+  /* ─── STATE ────────────────────────────────────────── */
+  const S = {
+    scene:   'sitting confidently on a modern luxury sofa in a high-end penthouse office, floor-to-ceiling windows, city view',
+    lighting:'soft studio lighting with warm golden accents, subtle fill light eliminating harsh shadows, professional and flattering',
+    mood:    'calm, confident, and quietly successful — the composed expression of someone who has already achieved their vision',
+    outfit:  'smart professional attire in minimalist black or deep neutral tones, clean and modern — effortless sophisticated authority',
+    glasses: '',
+    style:   'Forbes magazine "100 Most Powerful" cover portrait, hyper-realistic, editorial prestige, authoritative and aspirational',
+    camera:  'shot on a Hasselblad X2D 100C medium format camera, 80mm f/2.8 lens, extraordinary tonal depth and micro-detail, medium format rendering quality',
+    color:   '',
+    ratio:   'portrait orientation 4:5 ratio, optimised for Instagram and social media',
+    identityDesc: '',
+    extra:   ''
+  };
+
+  // Negative is multi-select — collect active .chip.neg values
+  function getSelectedNegatives() {
+    const chips = Array.from(document.querySelectorAll('#chips-negative .chip.neg.active'));
+    const vals  = chips.map(c => c.dataset.val).filter(Boolean);
+    const custom = (document.getElementById('custom-negative').value || '').trim();
+    if (custom) vals.push(custom);
+    return vals.join(', ');
+  }
+
+  /* ─── CHIP SETUP ───────────────────────────────────── */
+  document.querySelectorAll('.chips').forEach(group => {
+    const key = group.id.replace('chips-', '');
+    const isNeg = key === 'negative';
+
+    group.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const val = chip.dataset.val;
+        const customTA = document.getElementById('custom-' + key);
+
+        if (isNeg) {
+          // Multi-select for negatives
+          if (val === 'custom') {
+            if (customTA) { customTA.style.display = 'block'; customTA.focus(); }
+          } else {
+            chip.classList.toggle('active');
+          }
+        } else {
+          // Single-select for everything else
+          group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          if (val === 'custom') {
+            if (customTA) { customTA.style.display = 'block'; customTA.focus(); }
+            S[key] = customTA ? customTA.value : '';
+          } else {
+            if (customTA) customTA.style.display = 'none';
+            S[key] = val;
+          }
+        }
+        buildPrompt();
+      });
+    });
+  });
+
+  // Custom textareas (non-negative)
+  document.querySelectorAll('textarea[id^="custom-"]:not(#custom-negative)').forEach(ta => {
+    ta.addEventListener('input', () => {
+      const key = ta.id.replace('custom-', '');
+      S[key] = ta.value;
+      buildPrompt();
+    });
+  });
+
+  // Negative custom textarea
+  document.getElementById('custom-negative').addEventListener('input', buildPrompt);
+
+  // Identity description
+  document.getElementById('identity-desc').addEventListener('input', e => {
+    S.identityDesc = e.target.value.trim();
+    buildPrompt();
+  });
+  S.identityDesc = document.getElementById('identity-desc').value.trim();
+
+  /* ─── BUILD PROMPT ─────────────────────────────────── */
+  function buildPrompt() {
+    const { subject, poss, obj } = pronoun;
+    const { scene, lighting, mood, outfit, glasses, style, camera, color, ratio, identityDesc, extra } = S;
+
+    const identityFull = LOCK + (identityDesc ? ' ' + identityDesc : '');
+    const negatives    = getSelectedNegatives();
+
+    const htmlParts = [];
+    const plainParts = [];
+
+    function add(html, plain) { htmlParts.push(html); plainParts.push(plain); }
+
+    add(
+      `<span class="s-style">Please generate a ${style}.</span>`,
+      `Please generate a ${style}.`
+    );
+    add(
+      `<span class="s-identity">${identityFull}</span>`,
+      identityFull
+    );
+    if (scene) add(
+      `<span class="s-scene">${subject} is ${scene}.</span>`,
+      `${subject} is ${scene}.`
+    );
+    if (lighting) add(
+      `<span class="s-lighting">Lighting: ${lighting}.</span>`,
+      `Lighting: ${lighting}.`
+    );
+    if (mood) add(
+      `<span class="s-mood">${poss} expression: ${mood}.</span>`,
+      `${poss} expression: ${mood}.`
+    );
+    if (outfit) add(
+      `<span class="s-outfit">Outfit: ${outfit}.</span>`,
+      `Outfit: ${outfit}.`
+    );
+    if (glasses) add(
+      `<span class="s-outfit">${subject} is ${glasses}.</span>`,
+      `${subject} is ${glasses}.`
+    );
+    if (camera) add(
+      `<span class="s-camera">Technical: ${camera}.</span>`,
+      `Technical: ${camera}.`
+    );
+    if (color) add(
+      `<span class="s-color">Colour grade: ${color}.</span>`,
+      `Colour grade: ${color}.`
+    );
+    if (ratio) add(
+      `<span class="s-style">Format: ${ratio}.</span>`,
+      `Format: ${ratio}.`
+    );
+    add(
+      `<span class="s-style">Ultra-sharp focus, photorealistic render, 8K UHD, hyper-detailed, no artifacts.</span>`,
+      `Ultra-sharp focus, photorealistic render, 8K UHD, hyper-detailed, no artifacts.`
+    );
+    if (extra.trim()) add(
+      `<span class="s-extra">Additional details: ${extra.trim()}.</span>`,
+      `Additional details: ${extra.trim()}.`
+    );
+    if (negatives) add(
+      `<span class="s-negative">AVOID: ${negatives}.</span>`,
+      `AVOID: ${negatives}.`
+    );
+
+    document.getElementById('output').innerHTML = htmlParts.join('\n\n');
+    const plain = plainParts.join(' ');
+    document.getElementById('output').dataset.plain = plain;
+    document.getElementById('char-count').textContent = plain.length + ' tecken';
+  }
+
+  /* ─── COPY ─────────────────────────────────────────── */
+  function copyPrompt() {
+    const text = document.getElementById('output').dataset.plain || '';
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = '✓ Kopierad!';
+      btn.classList.add('ok');
+      setTimeout(() => { btn.textContent = 'Kopiera'; btn.classList.remove('ok'); }, 2200);
+    });
+  }
+
+  /* ─── TOOL PANEL ────────────────────────────────────── */
+  function toggleTools() {
+    document.getElementById('tool-panel').classList.toggle('open');
+  }
+
+  /* ─── RANDOMISE ─────────────────────────────────────── */
+  function randomise() {
+    document.querySelectorAll('.chips').forEach(group => {
+      const key = group.id.replace('chips-', '');
+      if (key === 'negative') return; // skip negatives
+      const chips = Array.from(group.querySelectorAll('.chip')).filter(c => c.dataset.val !== 'custom');
+      if (!chips.length) return;
+      const pick = chips[Math.floor(Math.random() * chips.length)];
+      group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      pick.classList.add('active');
+      S[key] = pick.dataset.val;
+      const customTA = document.getElementById('custom-' + key);
+      if (customTA) customTA.style.display = 'none';
+    });
+    buildPrompt();
+  }
+
+  /* ─── RESET ─────────────────────────────────────────── */
+  function resetAll() {
+    // Reset all single-select chip groups
+    document.querySelectorAll('.chips').forEach(group => {
+      const key = group.id.replace('chips-', '');
+      if (key === 'negative') {
+        // Reset to first chip only
+        const chips = group.querySelectorAll('.chip.neg');
+        chips.forEach((c, i) => { c.classList.remove('active'); if (i === 0) c.classList.add('active'); });
+      } else {
+        group.querySelectorAll('.chip').forEach((c, i) => {
+          c.classList.remove('active');
+          if (i === 0) c.classList.add('active');
+        });
+      }
+    });
+
+    // Hide/clear custom textareas
+    document.querySelectorAll('textarea[id^="custom-"]').forEach(ta => {
+      ta.style.display = 'none'; ta.value = '';
+    });
+    document.getElementById('custom-negative').value = '';
+
+    // Reset identity
+    const defaultDesc = 'He has a radiant, glowing skin tone with subtle highlights on cheekbones, bright sharp eyes, strong jawline, and short dark hair. Distinguished and confident appearance, mid-40s.';
+    document.getElementById('identity-desc').value = defaultDesc;
+    S.identityDesc = defaultDesc;
+
+    // Reset state
+    S.scene   = 'sitting confidently on a modern luxury sofa in a high-end penthouse office, floor-to-ceiling windows, city view';
+    S.lighting= 'soft studio lighting with warm golden accents, subtle fill light eliminating harsh shadows, professional and flattering';
+    S.mood    = 'calm, confident, and quietly successful — the composed expression of someone who has already achieved their vision';
+    S.outfit  = 'smart professional attire in minimalist black or deep neutral tones, clean and modern — effortless sophisticated authority';
+    S.glasses = '';
+    S.style   = 'Forbes magazine "100 Most Powerful" cover portrait, hyper-realistic, editorial prestige, authoritative and aspirational';
+    S.camera  = 'shot on a Hasselblad X2D 100C medium format camera, 80mm f/2.8 lens, extraordinary tonal depth and micro-detail, medium format rendering quality';
+    S.color   = '';
+    S.ratio   = 'portrait orientation 4:5 ratio, optimised for Instagram and social media';
+    S.extra   = '';
+    buildPrompt();
+  }
+
+  // Init
+  buildPrompt();
+</script>
+</body>
+</html>
